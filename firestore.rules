@@ -2,32 +2,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
     function isAdmin() {
       return signedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.role == 'customer';
-      allow update: if (signedIn() && request.auth.uid == uid
-        && request.resource.data.role == resource.data.role)
-        || isAdmin();
-      allow delete: if isAdmin();
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.role == 'customer'
+        && request.resource.data.username is string
+        && request.resource.data.usernameSlug is string
+        && request.resource.data.name is string
+        && request.resource.data.realEmail is string
+        && request.resource.data.phone is string;
+
+      // O cliente só pode alterar preferências locais do próprio perfil.
+      // Campos de identidade e, principalmente, role não podem ser alterados pelo cliente.
+      allow update: if isOwner(uid)
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenOrderCodes']);
+
+      allow update, delete: if isAdmin();
     }
 
     match /usernames/{username} {
       allow read: if signedIn();
       allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.username is string;
       allow update, delete: if isAdmin();
     }
 
     match /emailAliases/{hash} {
+      // Necessário para permitir login por e-mail antes da autenticação.
+      // O documento guarda apenas o e-mail técnico usado pelo Firebase Auth.
       allow get: if true;
       allow list: if false;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.authEmail is string;
       allow update, delete: if isAdmin();
     }
 
@@ -39,9 +55,18 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.code == orderId;
-      allow get: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow list: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+        && request.resource.data.code == orderId
+        && request.resource.data.status == 'Pedido recebido'
+        && request.resource.data.total is number
+        && request.resource.data.items is list;
+
+      allow get: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow list: if signedIn()
+        && (isAdmin() || resource.data.userId == request.auth.uid);
+
+      // Status, arquivamento e demais alterações operacionais são exclusivas do admin.
       allow update, delete: if isAdmin();
     }
   }
