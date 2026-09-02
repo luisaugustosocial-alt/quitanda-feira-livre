@@ -26,8 +26,8 @@ export default function Home() {
   const [settings, setSettings] = useState(defaults);
   const [cartMessage, setCartMessage] = useState('');
 
-  useEffect(() => onSnapshot(collection(db, 'products'), snap => setProducts(snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(p => p.available))), []);
-  useEffect(() => onSnapshot(doc(db, 'siteSettings', 'main'), snap => setSettings({ ...defaults, ...(snap.exists() ? snap.data() : {}) })), []);
+  useEffect(() => onSnapshot(collection(db, 'products'), snap => setProducts(snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(p => p.id !== '__site_settings__' && p.available))), []);
+  useEffect(() => onSnapshot(doc(db, 'products', '__site_settings__'), snap => setSettings({ ...defaults, ...(snap.exists() ? snap.data() : {}) })), []);
 
   function handleAddToCart(product) {
     addToCart(product);
