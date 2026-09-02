@@ -5,6 +5,7 @@ service cloud.firestore {
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
     function isAdmin() {
       return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
@@ -19,16 +20,18 @@ service cloud.firestore {
         && request.resource.data.realEmail is string
         && request.resource.data.phone is string;
 
-      allow update: if isOwner(uid)
+      allow update: if isAdmin() || (
+        isOwner(uid)
         && request.resource.data.role == resource.data.role
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenOrderCodes']);
+        && request.resource.data.username == resource.data.username
+        && request.resource.data.usernameSlug == resource.data.usernameSlug
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenOrderCodes'])
+      );
 
-      allow update, delete: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /usernames/{username} {
-      // Consulta exata é pública somente para verificar se um nome de usuário está disponível.
-      // Listagem continua bloqueada para impedir enumeração em massa.
       allow get: if true;
       allow list: if false;
       allow create: if signedIn()
@@ -38,6 +41,7 @@ service cloud.firestore {
     }
 
     match /emailAliases/{hash} {
+      // Necessário para permitir login por e-mail: o documento é identificado por SHA-256 do e-mail.
       allow get: if true;
       allow list: if false;
       allow create: if signedIn()
@@ -66,6 +70,10 @@ service cloud.firestore {
         && (isAdmin() || resource.data.userId == request.auth.uid);
 
       allow update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
