@@ -21,8 +21,8 @@ export default function Admin(){
  const [siteMsg,setSiteMsg]=useState('');
 
  useEffect(()=>{const q=query(collection(db,'orders'),orderBy('createdAt','desc'));return onSnapshot(q,s=>setOrders(s.docs.map(d=>({id:d.id,...d.data()}))))},[]);
- useEffect(()=>onSnapshot(collection(db,'products'),s=>setProducts(s.docs.map(d=>({id:d.id,...d.data()})))),[]);
- useEffect(()=>onSnapshot(doc(db,'siteSettings','main'),s=>setSiteForm({...siteDefaults,...(s.exists()?s.data():{})})),[]);
+ useEffect(()=>onSnapshot(collection(db,'products'),s=>setProducts(s.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.id!=='__site_settings__'))),[]);
+ useEffect(()=>onSnapshot(doc(db,'products','__site_settings__'),s=>setSiteForm({...siteDefaults,...(s.exists()?s.data():{})})),[]);
 
  const saveProduct=async e=>{e.preventDefault();setBusy(true);try{let imageUrl=form.imageUrl||'';if(file){imageUrl=await uploadProductImage(file)}const payload={...form,price:Number(form.price),stock:Number(form.stock||0),imageUrl,updatedAt:serverTimestamp()};if(editing)await updateDoc(doc(db,'products',editing),payload);else await addDoc(collection(db,'products'),{...payload,createdAt:serverTimestamp()});setForm({name:'',category:'',price:'',unit:'un',stock:'',available:true,imageUrl:''});setFile(null);setEditing(null)}finally{setBusy(false)}};
  const edit=p=>{setEditing(p.id);setForm({name:p.name||'',category:p.category||'',price:p.price||'',unit:p.unit||'un',stock:p.stock??'',available:!!p.available,imageUrl:p.imageUrl||''});setTab('products')};
@@ -35,7 +35,7 @@ export default function Admin(){
  const currentOrders=useMemo(()=>orders.filter(o=>!o.archived && (!normalizedSearch || String(o.code||'').toUpperCase().includes(normalizedSearch))),[orders,normalizedSearch]);
  const archivedOrders=useMemo(()=>orders.filter(o=>o.archived && (!normalizedSearch || String(o.code||'').toUpperCase().includes(normalizedSearch))),[orders,normalizedSearch]);
 
- const saveSite=async e=>{e.preventDefault();setSiteBusy(true);setSiteMsg('');try{let logoUrl=siteForm.logoUrl||'';if(siteFile)logoUrl=await uploadSiteImage(siteFile);await setDoc(doc(db,'siteSettings','main'),{...siteForm,logoUrl,updatedAt:serverTimestamp()},{merge:true});setSiteFile(null);setSiteMsg('Alterações do site salvas com sucesso.')}catch(err){setSiteMsg(err.message||'Não foi possível salvar as alterações.')}finally{setSiteBusy(false)}};
+ const saveSite=async e=>{e.preventDefault();setSiteBusy(true);setSiteMsg('');try{let logoUrl=siteForm.logoUrl||'';if(siteFile)logoUrl=await uploadSiteImage(siteFile);await setDoc(doc(db,'products','__site_settings__'),{...siteForm,logoUrl,available:false,isSiteSettings:true,updatedAt:serverTimestamp()},{merge:true});setSiteFile(null);setSiteMsg('Alterações do site salvas com sucesso.')}catch(err){setSiteMsg(err.message||'Não foi possível salvar as alterações.')}finally{setSiteBusy(false)}};
 
  const OrdersTable=({items,archived=false})=><div className="table-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Telefone</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Ações</th></tr></thead><tbody>{items.map(o=><tr key={o.id}><td><b>{o.code}</b><small>{o.address}</small></td><td>{o.customerName}</td><td>{o.phone}</td><td>R$ {Number(o.total).toFixed(2).replace('.',',')}</td><td>{o.paymentMethod}</td><td><select value={o.status} onChange={e=>updateStatus(o,e.target.value)}>{statuses.map(s=><option key={s}>{s}</option>)}</select></td><td>{archived?<button className="mini-btn" onClick={()=>restoreOrder(o)}>Restaurar</button>:<button className="mini-btn" onClick={()=>archiveOrder(o)}>Arquivar</button>}</td></tr>)}{!items.length&&<tr><td colSpan="7"><div className="empty">Nenhum pedido encontrado.</div></td></tr>}</tbody></table></div>;
 
