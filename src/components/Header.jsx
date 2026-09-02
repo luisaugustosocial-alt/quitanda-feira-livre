@@ -12,7 +12,7 @@ export default function Header() {
   const navigate = useNavigate();
   const logout = async () => { await signOut(auth); navigate('/'); };
 
-  useEffect(() => onSnapshot(doc(db, 'siteSettings', 'main'), snap => setLogoUrl(snap.exists() ? (snap.data().logoUrl || '') : '')), []);
+  useEffect(() => onSnapshot(doc(db, 'products', '__site_settings__'), snap => setLogoUrl(snap.exists() ? (snap.data().logoUrl || '') : '')), []);
 
   return <>
     <div className="brand-stripe"><span></span><span></span><span></span><span></span></div>
