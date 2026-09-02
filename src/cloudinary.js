@@ -1,7 +1,7 @@
 const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-export async function uploadProductImage(file) {
+async function uploadImage(file, folder) {
   if (!file) return '';
   if (!cloudName || !uploadPreset) {
     throw new Error('Cloudinary não configurado. Defina VITE_CLOUDINARY_CLOUD_NAME e VITE_CLOUDINARY_UPLOAD_PRESET.');
@@ -10,7 +10,7 @@ export async function uploadProductImage(file) {
   const body = new FormData();
   body.append('file', file);
   body.append('upload_preset', uploadPreset);
-  body.append('folder', 'quitanda-feira-livre/produtos');
+  body.append('folder', folder);
 
   const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
     method: 'POST',
@@ -24,4 +24,12 @@ export async function uploadProductImage(file) {
 
   const data = await response.json();
   return data.secure_url;
+}
+
+export function uploadProductImage(file) {
+  return uploadImage(file, 'quitanda-feira-livre/produtos');
+}
+
+export function uploadSiteImage(file) {
+  return uploadImage(file, 'quitanda-feira-livre/site');
 }
