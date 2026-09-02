@@ -8,6 +8,7 @@ export default function ResetPassword(){
   const [params]=useSearchParams();
   const oobCode=params.get('oobCode')||'';
   const mode=params.get('mode')||'';
+  const retorno=params.get('retorno')||'';
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [confirm,setConfirm]=useState('');
@@ -19,9 +20,15 @@ export default function ResetPassword(){
   const validMode=useMemo(()=>!mode||mode==='resetPassword',[mode]);
 
   useEffect(()=>{
-    if(!oobCode||!validMode){setMsg('Link de redefinição inválido ou incompleto.');setBusy(false);return}
+    if(!oobCode){
+      setBusy(false);
+      if(retorno==='firebase') setMsg('Se você concluiu a redefinição na tela de segurança do Firebase, sua nova senha já pode ser usada.');
+      else setMsg('Para alterar sua senha, solicite um novo link na tela de login.');
+      return;
+    }
+    if(!validMode){setMsg('Link de redefinição inválido ou incompleto.');setBusy(false);return}
     verifyPasswordResetCode(auth,oobCode).then(setEmail).catch(()=>setMsg('Este link é inválido, já foi usado ou expirou.')).finally(()=>setBusy(false));
-  },[oobCode,validMode]);
+  },[oobCode,validMode,retorno]);
 
   const submit=async e=>{
     e.preventDefault();setMsg('');
@@ -35,6 +42,6 @@ export default function ResetPassword(){
     <span className="tag green">NOVA SENHA</span><h1>Redefinir senha</h1>
     {busy&&!done&&<p>Validando seu link...</p>}
     {done?<><div className="info-box">Senha alterada com sucesso.</div><Link className="btn green full" to="/login">Entrar na minha conta</Link></>:
-    <>{msg&&<div className="alert">{msg}</div>}{email&&<form onSubmit={submit}><p>Conta: <b>{email}</b></p><label>Nova senha<div className="password-field"><input required minLength="6" type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)}/><button type="button" className="password-eye" onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={20}/>:<Eye size={20}/>}</button></div></label><label>Confirmar nova senha<input required minLength="6" type={showPassword?'text':'password'} value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><button className="btn green full" disabled={busy}>{busy?'Salvando...':'Salvar nova senha'}</button></form>} {!email&&!busy&&<Link to="/login" className="btn blue full">Voltar ao login</Link>}</>}
+    <>{msg&&<div className={retorno==='firebase'&&!oobCode?'info-box':'alert'}>{msg}</div>}{email&&<form onSubmit={submit}><p>Conta: <b>{email}</b></p><label>Nova senha<div className="password-field"><input required minLength="6" type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)}/><button type="button" className="password-eye" aria-label={showPassword?'Ocultar senha':'Mostrar senha'} onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={20}/>:<Eye size={20}/>}</button></div></label><label>Confirmar nova senha<input required minLength="6" type={showPassword?'text':'password'} value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><button className="btn green full" disabled={busy}>{busy?'Salvando...':'Salvar nova senha'}</button></form>} {!email&&!busy&&<Link to="/login" className="btn blue full">Ir para o login</Link>}</>}
   </div></main>
 }
