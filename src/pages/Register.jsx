@@ -24,21 +24,96 @@ export default function Register(){
  const checkUsername=async()=>{const candidate=cleanName(form.username);setSuggestions([]);if(candidate.length<3)return false;setChecking(true);try{const exists=await usernameDocExists(candidate);if(exists){setMsg('Este usuário já foi usado anteriormente. A disponibilidade será confirmada ao criar a conta.');return true}if(msg.startsWith('Este usuário já foi usado anteriormente.'))setMsg('');return false}finally{setChecking(false)}};
  const chooseSuggestion=candidate=>{setForm(old=>({...old,username:candidate}));setSuggestions([]);setMsg('')};
 
- const submit=async(e)=>{e.preventDefault();setMsg('');setSuggestions([]);let created=null,usernameRef=null,userRef=null,aliasRef=null;try{
-   if(slug.length<3)throw new Error('Escolha um usuário com pelo menos 3 caracteres.');
-   if(!form.accepted)throw new Error('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
-   const realEmail=form.email.trim().toLowerCase();
-   const cred=await createUserWithEmailAndPassword(auth,realEmail,form.password);created=cred.user;
-   usernameRef=doc(db,'usernames',slug);userRef=doc(db,'users',created.uid);
-   await setDoc(userRef,{name:form.name.trim(),realEmail,phone:form.phone.trim(),username:displayUsername(slug),usernameSlug:slug,role:'customer',createdAt:serverTimestamp(),legalAcceptance:{termsVersion:TERMS_VERSION,privacyVersion:PRIVACY_VERSION,acceptedAt:serverTimestamp()}});
-   await setDoc(usernameRef,{uid:created.uid,username:displayUsername(slug),authEmail:realEmail,createdAt:serverTimestamp()});
-   const emailHash=await sha256(realEmail);aliasRef=doc(db,'emailAliases',emailHash);await setDoc(aliasRef,{uid:created.uid,authEmail:realEmail,createdAt:serverTimestamp()});
-   nav('/');
- }catch(err){
-   if(created){try{if(usernameRef)await deleteDoc(usernameRef)}catch{}try{if(userRef)await deleteDoc(userRef)}catch{}try{if(aliasRef)await deleteDoc(aliasRef)}catch{}try{await deleteUser(created)}catch{}}
-   if(err?.code==='auth/email-already-in-use'){setMsg('Este e-mail já está cadastrado. Tente entrar ou redefinir sua senha.');return}
-   setMsg((err.message||'Não foi possível criar a conta.').replace('Firebase:',''));
- }};
+ const submit=async(e)=>{
+   e.preventDefault();
+   setMsg('');
+   setSuggestions([]);
+
+   let created=null;
+   let usernameRef=null;
+   let userRef=null;
+   let aliasRef=null;
+   let createdUsernameDoc=false;
+   let createdUserDoc=false;
+   let createdAliasDoc=false;
+
+   try{
+     if(slug.length<3) throw new Error('Escolha um usuário com pelo menos 3 caracteres.');
+     if(!form.accepted) throw new Error('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
+
+     const realEmail=form.email.trim().toLowerCase();
+     const emailHash=await sha256(realEmail);
+     usernameRef=doc(db,'usernames',slug);
+     aliasRef=doc(db,'emailAliases',emailHash);
+
+     const [existingUsername,existingAlias]=await Promise.all([
+       getDoc(usernameRef),
+       getDoc(aliasRef)
+     ]);
+
+     // Se já existe reserva antiga do username para outro e-mail, não tenta sobrescrever.
+     if(existingUsername.exists()){
+       const oldEmail=String(existingUsername.data().authEmail||'').toLowerCase();
+       if(oldEmail && oldEmail!==realEmail){
+         setMsg('Este usuário já está em uso.');
+         setSuggestions(await findSuggestions(slug));
+         return;
+       }
+     }
+
+     // Um alias antigo do mesmo e-mail pode permanecer após exclusão manual no Authentication.
+     // Nesse caso ele será reaproveitado, sem update que viole as regras do Firestore.
+     if(existingAlias.exists()){
+       const oldEmail=String(existingAlias.data().authEmail||'').toLowerCase();
+       if(oldEmail && oldEmail!==realEmail){
+         throw new Error('Este e-mail já está vinculado a outra conta.');
+       }
+     }
+
+     const cred=await createUserWithEmailAndPassword(auth,realEmail,form.password);
+     created=cred.user;
+     userRef=doc(db,'users',created.uid);
+
+     await setDoc(userRef,{
+       name:form.name.trim(),
+       realEmail,
+       phone:form.phone.trim(),
+       username:displayUsername(slug),
+       usernameSlug:slug,
+       role:'customer',
+       createdAt:serverTimestamp(),
+       legalAcceptance:{termsVersion:TERMS_VERSION,privacyVersion:PRIVACY_VERSION,acceptedAt:serverTimestamp()}
+     });
+     createdUserDoc=true;
+
+     if(!existingUsername.exists()){
+       await setDoc(usernameRef,{uid:created.uid,username:displayUsername(slug),authEmail:realEmail,createdAt:serverTimestamp()});
+       createdUsernameDoc=true;
+     }
+
+     if(!existingAlias.exists()){
+       await setDoc(aliasRef,{uid:created.uid,authEmail:realEmail,createdAt:serverTimestamp()});
+       createdAliasDoc=true;
+     }
+
+     nav('/');
+   }catch(err){
+     // Limpa apenas documentos realmente criados nesta tentativa.
+     if(created){
+       try{if(createdUsernameDoc&&usernameRef)await deleteDoc(usernameRef)}catch{}
+       try{if(createdUserDoc&&userRef)await deleteDoc(userRef)}catch{}
+       try{if(createdAliasDoc&&aliasRef)await deleteDoc(aliasRef)}catch{}
+       try{await deleteUser(created)}catch{}
+     }
+
+     if(err?.code==='auth/email-already-in-use'){
+       setMsg('Este e-mail já está cadastrado. Tente entrar ou redefinir sua senha.');
+       return;
+     }
+
+     setMsg((err.message||'Não foi possível criar a conta.').replace('Firebase:',''));
+   }
+ };
 
  return <main className="auth-page"><form className="auth-card" onSubmit={submit}><span className="tag green">CRIAR CONTA</span><h1>Cadastro</h1><p>Seu usuário será <b>{displayUsername(slug||'seunome')}</b>.</p>
  {msg&&<div className="alert">{msg}</div>}
