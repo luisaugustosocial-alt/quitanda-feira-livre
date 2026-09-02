@@ -28,9 +28,11 @@ export default function TrackOrder(){
   const findLatest=async()=>{
     setBusy(true); setMsg('');
     try{
+      const userSnap=await getDoc(doc(db,'users',user.uid));
+      const hidden=userSnap.exists()?(userSnap.data().hiddenOrderCodes||[]):[];
       const q=query(collection(db,'orders'),where('userId','==',user.uid));
       const s=await getDocs(q);
-      const all=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>!o.hiddenByCustomer);
+      const all=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>!hidden.includes(o.code));
       all.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
       if(!all.length){setOrder(null);setMsg('Você ainda não possui pedidos para acompanhar.');return}
       const latest=all[0]; setCode(latest.code); setOrder(latest);
