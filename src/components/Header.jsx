@@ -6,13 +6,15 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { AppContext } from '../App';
 
+const SITE_SETTINGS_ID = 'qfl-site-settings';
+
 export default function Header() {
   const { user, profile, cartCount } = useContext(AppContext);
   const [logoUrl, setLogoUrl] = useState('');
   const navigate = useNavigate();
   const logout = async () => { await signOut(auth); navigate('/'); };
 
-  useEffect(() => onSnapshot(doc(db, 'products', '__site_settings__'), snap => setLogoUrl(snap.exists() ? (snap.data().logoUrl || '') : '')), []);
+  useEffect(() => onSnapshot(doc(db, 'products', SITE_SETTINGS_ID), snap => setLogoUrl(snap.exists() ? (snap.data().logoUrl || '') : '')), []);
 
   return <>
     <div className="brand-stripe"><span></span><span></span><span></span><span></span></div>
