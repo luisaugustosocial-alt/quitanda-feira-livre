@@ -1,28 +1,32 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, serverTimestamp, updateDoc, where, doc } from 'firebase/firestore';
+import { arrayUnion, collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { AppContext } from '../App';
 import { db } from '../firebase';
 
 export default function MyOrders(){
   const {user}=useContext(AppContext);
   const [orders,setOrders]=useState([]);
+  const [hiddenCodes,setHiddenCodes]=useState([]);
   const [msg,setMsg]=useState('');
 
   useEffect(()=>{
     if(!user) return;
+    getDoc(doc(db,'users',user.uid)).then(s=>setHiddenCodes(s.exists()?(s.data().hiddenOrderCodes||[]):[]));
     const q=query(collection(db,'orders'),where('userId','==',user.uid));
     return onSnapshot(q,s=>setOrders(s.docs.map(d=>({id:d.id,...d.data()}))),()=>setOrders([]));
   },[user]);
 
   const visibleOrders=useMemo(()=>orders
-    .filter(o=>!o.hiddenByCustomer)
-    .sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)),[orders]);
+    .filter(o=>!hiddenCodes.includes(o.code))
+    .sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)),[orders,hiddenCodes]);
 
   const clearOrders=async()=>{
     if(!visibleOrders.length) return;
     const ok=window.confirm('Deseja limpar seu histórico de pedidos? Isso removerá os pedidos apenas da sua visualização.');
     if(!ok) return;
-    await Promise.all(visibleOrders.map(o=>updateDoc(doc(db,'orders',o.id),{hiddenByCustomer:true,customerHiddenAt:serverTimestamp()})));
+    const codes=visibleOrders.map(o=>o.code);
+    await updateDoc(doc(db,'users',user.uid),{hiddenOrderCodes:arrayUnion(...codes)});
+    setHiddenCodes(old=>[...new Set([...old,...codes])]);
     setMsg('Histórico limpo da sua conta.');
   };
 
