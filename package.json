@@ -1,7 +1,7 @@
 {
   "name": "quitanda-feira-livre",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,8 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "firebase": "latest",
+    "html2canvas": "latest",
+    "jspdf": "latest",
     "lucide-react": "latest",
     "vite": "latest",
     "react": "latest",
