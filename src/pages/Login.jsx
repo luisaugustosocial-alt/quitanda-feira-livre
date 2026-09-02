@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 
+const SITE_URL='https://quitanda-feira-livre.vercel.app';
 const normalizeUser = v => v.toLowerCase().replace(/^userquitanda@/,'').trim();
 const sha256 = async (text) => {
   const data = new TextEncoder().encode(text.trim().toLowerCase());
@@ -79,7 +80,10 @@ export default function Login(){
     setMsg('');setResetBusy(true);
     try{
       const email=await resolveAuthEmail(login);
-      await sendPasswordResetEmail(auth,email,{url:`${window.location.origin}/redefinir-senha`});
+      await sendPasswordResetEmail(auth,email,{
+        url:`${SITE_URL}/redefinir-senha?retorno=firebase`,
+        handleCodeInApp:false
+      });
       setMsg('E-mail de redefinição enviado. Confira sua caixa de entrada e o spam.');
     }catch(err){
       setMsg(err?.message==='Informe seu usuário ou e-mail.'?err.message:'Não foi possível enviar a redefinição. Confira o usuário/e-mail informado.');
