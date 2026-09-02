@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Home, ShoppingBasket } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import './NotFound.css';
 
 export default function NotFound() {
   const [logoUrl, setLogoUrl] = useState('');
