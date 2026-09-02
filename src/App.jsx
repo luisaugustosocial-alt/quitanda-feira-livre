@@ -13,6 +13,7 @@ import TrackOrder from './pages/TrackOrder';
 import Admin from './pages/Admin';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+import NotFound from './pages/NotFound';
 import Footer from './components/Footer';
 
 export const AppContext = React.createContext(null);
@@ -71,7 +72,7 @@ export default function App() {
         <Route path="/admin" element={<AdminOnly user={user} profile={profile}><Admin /></AdminOnly>} />
         <Route path="/termos" element={<Terms />} />
         <Route path="/privacidade" element={<Privacy />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
     </AppContext.Provider>
