@@ -19,8 +19,6 @@ service cloud.firestore {
         && request.resource.data.realEmail is string
         && request.resource.data.phone is string;
 
-      // O cliente só pode alterar preferências locais do próprio perfil.
-      // Campos de identidade e, principalmente, role não podem ser alterados pelo cliente.
       allow update: if isOwner(uid)
         && request.resource.data.role == resource.data.role
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenOrderCodes']);
@@ -29,7 +27,10 @@ service cloud.firestore {
     }
 
     match /usernames/{username} {
-      allow read: if signedIn();
+      // Consulta exata é pública somente para verificar se um nome de usuário está disponível.
+      // Listagem continua bloqueada para impedir enumeração em massa.
+      allow get: if true;
+      allow list: if false;
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.username is string;
@@ -37,8 +38,6 @@ service cloud.firestore {
     }
 
     match /emailAliases/{hash} {
-      // Necessário para permitir login por e-mail antes da autenticação.
-      // O documento guarda apenas o e-mail técnico usado pelo Firebase Auth.
       allow get: if true;
       allow list: if false;
       allow create: if signedIn()
@@ -66,7 +65,6 @@ service cloud.firestore {
       allow list: if signedIn()
         && (isAdmin() || resource.data.userId == request.auth.uid);
 
-      // Status, arquivamento e demais alterações operacionais são exclusivas do admin.
       allow update, delete: if isAdmin();
     }
   }
