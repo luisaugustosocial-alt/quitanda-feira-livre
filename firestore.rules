@@ -25,8 +25,6 @@ service cloud.firestore {
     }
 
     match /emailAliases/{hash} {
-      // O documento só revela o e-mail técnico do Firebase, nunca o e-mail real.
-      // A leitura exata é pública para permitir login por e-mail antes da autenticação.
       allow get: if true;
       allow list: if false;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
@@ -38,13 +36,23 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /siteSettings/{settingsId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /orders/{orderId} {
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.code == orderId;
       allow get: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hiddenByCustomer', 'customerHiddenAt'])
+      );
+      allow delete: if isAdmin();
     }
   }
 }
