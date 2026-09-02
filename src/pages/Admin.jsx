@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { uploadProductImage, uploadSiteImage } from '../cloudinary';
+import { uploadProductImage, uploadSiteImage } from '../imagekit';
 
 const statuses=['Pedido recebido','Aguardando confirmação','Em separação','Saiu para entrega','Concluído','Cancelado'];
 const siteDefaults={logoUrl:'',heroEyebrow:'QUITANDA FEIRA LIVRE',heroTitleBefore:'O melhor da',heroTitleHighlight:'feira',heroTitleAfter:'para sua casa.',heroDescription:'Frutas, verduras e legumes fresquinhos em Santa Maria da Vitória.',storeTag:'NOSSA LOJA',storeTitle:'Santa Maria da Vitória/BA',storeAddress:'Endereço da Quitanda Feira Livre — edite no painel administrativo.',storePhone:'(77) 99999-9999',catalogTag:'CATÁLOGO',catalogTitle:'Produtos disponíveis',catalogDescription:'Confira os produtos disponíveis na Quitanda Feira Livre.'};
